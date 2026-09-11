@@ -17,13 +17,10 @@ export function StreamNodeView({ id, data }: NodeProps<StreamNode>) {
       <div className="node-label">{data.label}</div>
       <div className="node-inputs nodrag">
         <input
-          type="number"
-          min="0"
           placeholder="auto"
-          value={data.amount ?? ''}
-          onChange={(e) =>
-            updateNodeData(id, { amount: e.target.value === '' ? null : Number(e.target.value) })
-          }
+          title="A number, or an expression using $pool (all the parent sends out) and $auto (the share this node would get if left empty)"
+          value={data.amount}
+          onChange={(e) => updateNodeData(id, { amount: e.target.value })}
         />
         every
         <input

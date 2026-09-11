@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict'
 import { computeFlows, wouldCycle, type Rate } from '../src/flow.ts'
 
-const node = (id: string, amount: number | null, every = 1, unit: Rate['unit'] = 'month') => ({
+const node = (
+  id: string,
+  amount: number | string | null,
+  every = 1,
+  unit: Rate['unit'] = 'month',
+) => ({
   id,
-  data: { amount, every, unit },
+  data: { amount: amount === null ? '' : String(amount), every, unit },
 })
 const link = (source: string, target: string) => ({ id: `${source}-${target}`, source, target })
 const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`)
@@ -78,6 +83,49 @@ const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} 
   )
   assert.equal(f.nodes.get('rent')!.short, 500)
   assert.equal(f.nodes.get('food')!.short, 50)
+}
+
+// Plain arithmetic with no variables is just a fixed amount.
+{
+  const f = computeFlows([node('s', '50 * 2'), node('a', null)], [link('s', 'a')])
+  assert.equal(f.edges.get('s-a'), 100)
+}
+
+// $pool is everything the parent sends out, $auto what this node would get if left empty.
+{
+  const f = computeFlows(
+    [node('s', 100), node('groceries', 10), node('tax', '$pool * 0.30'), node('rest', null)],
+    [link('s', 'groceries'), link('s', 'tax'), link('s', 'rest')],
+  )
+  close(f.edges.get('s-tax')!, 30)
+  close(f.edges.get('s-rest')!, 60)
+}
+{
+  const f = computeFlows(
+    [node('s', 100), node('groceries', 10), node('tax', '$auto')],
+    [link('s', 'groceries'), link('s', 'tax')],
+  )
+  close(f.edges.get('s-tax')!, 90)
+}
+
+// An expression node passes on what it works out to, and nonsense reads as nothing.
+{
+  const f = computeFlows(
+    [node('s', 1000), node('tax', '$pool / 4'), node('irs', null), node('junk', '$pool +')],
+    [link('s', 'tax'), link('tax', 'irs'), link('s', 'junk')],
+  )
+  close(f.nodes.get('irs')!.flow, 250)
+  assert.equal(f.edges.get('s-junk'), 0)
+  close(f.nodes.get('s')!.unallocated, 750)
+}
+
+// Expressions honour every/unit like any other amount.
+{
+  const f = computeFlows(
+    [node('s', 1200, 1, 'year'), node('tax', '$pool * 12', 1, 'year')],
+    [link('s', 'tax')],
+  )
+  close(f.edges.get('s-tax')!, 100)
 }
 
 // Loops are refused.

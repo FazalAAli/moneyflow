@@ -17,19 +17,19 @@ const initialNodes: AppNode[] = [
     id: 'salary',
     type: 'stream',
     position: { x: 0, y: 0 },
-    data: { label: 'Salary', amount: 2600, every: 2, unit: 'week' },
+    data: { label: 'Salary', amount: '2600', every: 2, unit: 'week' },
   },
   {
     id: 'groceries',
     type: 'stream',
     position: { x: 350, y: 0 },
-    data: { label: 'Groceries', amount: 100, every: 1, unit: 'week' },
+    data: { label: 'Groceries', amount: '100', every: 1, unit: 'week' },
   },
   {
     id: 'savings',
     type: 'stream',
     position: { x: 350, y: 150 },
-    data: { label: 'Savings', amount: null, every: 1, unit: 'month' },
+    data: { label: 'Savings', amount: '', every: 1, unit: 'month' },
   },
 ]
 
@@ -43,7 +43,7 @@ function AddStream() {
       id: crypto.randomUUID(),
       type: 'stream',
       position: screenToFlowPosition({ x: innerWidth / 2, y: innerHeight / 2 }),
-      data: { label, amount: null, every: 1, unit: 'month' },
+      data: { label, amount: '', every: 1, unit: 'month' },
     })
   }
 

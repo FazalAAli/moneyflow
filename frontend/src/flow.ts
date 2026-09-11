@@ -2,14 +2,41 @@ import { createContext } from 'react'
 
 export type Unit = 'week' | 'month' | 'year'
 
-// amount is null when the graph should work it out from the connections.
-export type Rate = { amount: number | null; every: number; unit: Unit }
+// amount is an expression: empty when the graph should work it out from the connections,
+// otherwise anything JS can evaluate. $pool is everything the parent sends out, $auto is
+// the share this node would have got if the amount were left empty.
+export type Rate = { amount: string; every: number; unit: Unit }
 
 const MONTHS_PER_UNIT: Record<Unit, number> = { week: 12 / 52, month: 1, year: 12 }
 
-// Everything on the graph is a monthly rate.
-export function toMonthly({ amount, every, unit }: Rate): number | null {
-  return amount === null || every <= 0 ? null : amount / (every * MONTHS_PER_UNIT[unit])
+export const usesVars = (amount: string) => /\$(pool|auto)/.test(amount)
+
+// ponytail: new Function is fine, the only author of these expressions is the only user.
+type Expr = (pool: number, auto: number) => unknown
+const compiled = new Map<string, Expr | null>()
+function compile(src: string): Expr | null {
+  if (!compiled.has(src)) {
+    try {
+      compiled.set(src, new Function('pool', 'auto', `return (${src.replaceAll('$', '')})`) as Expr)
+    } catch {
+      compiled.set(src, null)
+    }
+  }
+  return compiled.get(src)!
+}
+
+// Everything on the graph is a monthly rate. null means "work it out".
+export function toMonthly({ amount, every, unit }: Rate, pool = 0, auto = 0): number | null {
+  const src = amount.trim()
+  if (!src || every <= 0) return null
+  let value: unknown
+  try {
+    value = compile(src)?.(pool, auto)
+  } catch {
+    return null
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null
+  return value / (every * MONTHS_PER_UNIT[unit])
 }
 
 export const money = (n: number) => Math.round(n).toLocaleString()
@@ -34,7 +61,10 @@ const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0)
 
 // Demands travel upstream, leftovers travel downstream. Assumes no cycles (wouldCycle guards that).
 export function computeFlows(items: Item[], links: Link[]): Flows {
-  const set = new Map(items.map((n) => [n.id, toMonthly(n.data)]))
+  // A node using $pool or $auto can't be resolved until its parent shares out; until then
+  // it behaves like an empty node, and its parent fills the edge in during allocate.
+  const derived = new Map(items.filter((n) => usesVars(n.data.amount)).map((n) => [n.id, n.data]))
+  const set = new Map(items.map((n) => [n.id, derived.has(n.id) ? null : toMonthly(n.data)]))
   const outs = new Map(items.map((n) => [n.id, [] as Link[]]))
   const ins = new Map(items.map((n) => [n.id, [] as Link[]]))
   for (const l of links) {
@@ -51,7 +81,7 @@ export function computeFlows(items: Item[], links: Link[]): Flows {
   }
   // ponytail: a node with several parents asks each for an equal share.
   const linkFloor = (l: Link) => floor(l.target) / ins.get(l.target)!.length
-  const isEmpty = (id: string) => set.get(id) == null
+  const isEmpty = (id: string) => set.get(id) == null && !derived.has(id)
 
   const available = new Map<string, number>()
   const edges = new Map<string, number>()
@@ -76,9 +106,22 @@ export function computeFlows(items: Item[], links: Link[]): Flows {
     const scale = asked > have ? have / asked : 1
     const rest = Math.max(0, have - asked)
     const open = links.filter((l) => isEmpty(l.target))
+    const calc = links.filter((l) => derived.has(l.target))
     for (const l of links) edges.set(l.id, linkFloor(l) * scale)
-    for (const l of open) edges.set(l.id, edges.get(l.id)! + rest / open.length)
-    unallocated.set(id, open.length ? 0 : rest)
+
+    // Expressions take what they work out to, not a share of the leftovers.
+    const share = rest / (open.length + calc.length || 1)
+    let taken = 0
+    for (const l of calc) {
+      const auto = linkFloor(l) * scale + share
+      const value = Math.max(0, toMonthly(derived.get(l.target)!, have, auto) ?? 0)
+      taken += value - edges.get(l.id)!
+      edges.set(l.id, value)
+    }
+
+    const left = Math.max(0, rest - taken)
+    for (const l of open) edges.set(l.id, edges.get(l.id)! + left / open.length)
+    unallocated.set(id, open.length ? 0 : left)
   }
 
   const nodes = new Map<string, NodeFlow>()
