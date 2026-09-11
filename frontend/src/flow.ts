@@ -4,20 +4,25 @@ export type Unit = 'week' | 'month' | 'year'
 
 // amount is an expression: empty when the graph should work it out from the connections,
 // otherwise anything JS can evaluate. $pool is everything the parent sends out, $auto is
-// the share this node would have got if the amount were left empty.
+// the share this node would have got if the amount were left empty, and any other $name
+// comes from the variables table.
 export type Rate = { amount: string; every: number; unit: Unit }
+
+export type Vars = Record<string, number>
 
 const MONTHS_PER_UNIT: Record<Unit, number> = { week: 12 / 52, month: 1, year: 12 }
 
-export const usesVars = (amount: string) => /\$(pool|auto)/.test(amount)
+// $pool and $auto are the two the parent has to fill in while it shares out.
+export const usesFlowVars = (amount: string) => /\$(pool|auto)\b/.test(amount)
 
 // ponytail: new Function is fine, the only author of these expressions is the only user.
-type Expr = (pool: number, auto: number) => unknown
+type Expr = (v: Vars) => unknown
 const compiled = new Map<string, Expr | null>()
 function compile(src: string): Expr | null {
   if (!compiled.has(src)) {
     try {
-      compiled.set(src, new Function('pool', 'auto', `return (${src.replaceAll('$', '')})`) as Expr)
+      const body = src.replace(/\$([A-Za-z_]\w*)/g, 'v.$1')
+      compiled.set(src, new Function('v', `return (${body})`) as Expr)
     } catch {
       compiled.set(src, null)
     }
@@ -26,12 +31,12 @@ function compile(src: string): Expr | null {
 }
 
 // Everything on the graph is a monthly rate. null means "work it out".
-export function toMonthly({ amount, every, unit }: Rate, pool = 0, auto = 0): number | null {
+export function toMonthly({ amount, every, unit }: Rate, vars: Vars = {}): number | null {
   const src = amount.trim()
   if (!src || every <= 0) return null
   let value: unknown
   try {
-    value = compile(src)?.(pool, auto)
+    value = compile(src)?.(vars)
   } catch {
     return null
   }
@@ -60,11 +65,13 @@ export const FlowsContext = createContext<Flows>({ nodes: new Map(), edges: new 
 const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0)
 
 // Demands travel upstream, leftovers travel downstream. Assumes no cycles (wouldCycle guards that).
-export function computeFlows(items: Item[], links: Link[]): Flows {
+export function computeFlows(items: Item[], links: Link[], vars: Vars = {}): Flows {
   // A node using $pool or $auto can't be resolved until its parent shares out; until then
   // it behaves like an empty node, and its parent fills the edge in during allocate.
-  const derived = new Map(items.filter((n) => usesVars(n.data.amount)).map((n) => [n.id, n.data]))
-  const set = new Map(items.map((n) => [n.id, derived.has(n.id) ? null : toMonthly(n.data)]))
+  const derived = new Map(
+    items.filter((n) => usesFlowVars(n.data.amount)).map((n) => [n.id, n.data]),
+  )
+  const set = new Map(items.map((n) => [n.id, derived.has(n.id) ? null : toMonthly(n.data, vars)]))
   const outs = new Map(items.map((n) => [n.id, [] as Link[]]))
   const ins = new Map(items.map((n) => [n.id, [] as Link[]]))
   for (const l of links) {
@@ -114,7 +121,7 @@ export function computeFlows(items: Item[], links: Link[]): Flows {
     let taken = 0
     for (const l of calc) {
       const auto = linkFloor(l) * scale + share
-      const value = Math.max(0, toMonthly(derived.get(l.target)!, have, auto) ?? 0)
+      const value = Math.max(0, toMonthly(derived.get(l.target)!, { ...vars, pool: have, auto }) ?? 0)
       taken += value - edges.get(l.id)!
       edges.set(l.id, value)
     }

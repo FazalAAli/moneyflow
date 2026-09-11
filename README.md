@@ -28,7 +28,7 @@ With a Sankey tool I'd say "$1,200 goes here." Here I say "a fifth of what arriv
 
 | Piece | Role |
 |---|---|
-| **Stream** | A recurring amount of money: how much and how often, as "amount every N weeks, months, or years." A positive amount comes in (a salary every two weeks, a bonus each quarter). A negative amount goes out (groceries, $100 every week). The amount can be an expression instead of a number, using `$pool` (everything the parent sends out) and `$auto` (the share this stream would get if the amount were left empty), so a tax stream is `$pool * 0.30`. Streams are the only place I enter raw numbers. Tags will later mark a stream as income, an expense, an investment, and so on. |
+| **Stream** | A recurring amount of money: how much and how often, as "amount every N weeks, months, or years." A positive amount comes in (a salary every two weeks, a bonus each quarter). A negative amount goes out (groceries, $100 every week). The amount can be an expression instead of a number, using `$pool` (everything the parent sends out) and `$auto` (the share this stream would get if the amount were left empty), so a tax stream is `$pool * 0.30`. An amount can also read a value from the variables table as `$name`. Streams are the only place I enter raw numbers. Tags will later mark a stream as income, an expense, an investment, and so on. |
 | **Splitter** | Divides what arrives and passes it on. It holds nothing and keeps nothing; money just moves through. All the logic lives here: percentages, fixed carve-outs, and any other rules I define. |
 | **Connection** | Carries a rate. It's an ongoing "this much per month flows along here," not a transaction or a dated event. |
 

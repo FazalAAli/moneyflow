@@ -8,9 +8,10 @@ import {
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { useMemo } from 'react'
-import { FlowsContext, computeFlows, money, wouldCycle } from './flow'
+import { useMemo, useState } from 'react'
+import { FlowsContext, computeFlows, money, wouldCycle, type Vars } from './flow'
 import { nodeTypes, type AppNode } from './nodes'
+import { VarsTable } from './vars'
 
 const initialNodes: AppNode[] = [
   {
@@ -47,17 +48,14 @@ function AddStream() {
     })
   }
 
-  return (
-    <Panel position="top-left">
-      <button onClick={add}>+ Stream</button>
-    </Panel>
-  )
+  return <button onClick={add}>+ Stream</button>
 }
 
 export default function App() {
   const [nodes, , onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
-  const flows = useMemo(() => computeFlows(nodes, edges), [nodes, edges])
+  const [vars, setVars] = useState<Vars>({})
+  const flows = useMemo(() => computeFlows(nodes, edges, vars), [nodes, edges, vars])
   const labelled = useMemo(
     () => edges.map((e) => ({ ...e, label: `${money(flows.edges.get(e.id) ?? 0)}/month` })),
     [edges, flows],
@@ -76,7 +74,10 @@ export default function App() {
         colorMode="dark"
         fitView
       >
-        <AddStream />
+        <Panel position="top-left">
+          <AddStream />
+          <VarsTable vars={vars} onSave={setVars} />
+        </Panel>
       </ReactFlow>
     </FlowsContext>
   )

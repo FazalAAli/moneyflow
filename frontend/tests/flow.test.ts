@@ -128,6 +128,24 @@ const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} 
   close(f.edges.get('s-tax')!, 100)
 }
 
+// Variables from the table are readable everywhere, alongside $pool.
+{
+  const f = computeFlows(
+    [node('s', '$gross'), node('tax', '$pool * $rate'), node('rest', null)],
+    [link('s', 'tax'), link('s', 'rest')],
+    { gross: 5000, rate: 0.3 },
+  )
+  close(f.nodes.get('s')!.flow, 5000)
+  close(f.edges.get('s-tax')!, 1500)
+  close(f.edges.get('s-rest')!, 3500)
+}
+
+// An unknown name reads as nothing, same as any other broken expression.
+{
+  const f = computeFlows([node('s', '$nope * 2'), node('a', null)], [link('s', 'a')])
+  assert.equal(f.edges.get('s-a'), 0)
+}
+
 // Loops are refused.
 assert.equal(wouldCycle([link('a', 'b'), link('b', 'c')], 'c', 'a'), true)
 assert.equal(wouldCycle([link('a', 'b')], 'a', 'c'), false)
