@@ -28,9 +28,8 @@ With a Sankey tool I'd say "$1,200 goes here." Here I say "a fifth of what arriv
 
 | Piece | Role |
 |---|---|
-| **Source** | Produces money. It knows how much and how often: a salary every two weeks, a bonus each quarter, a dividend that lands irregularly. Sources are the only place I enter raw numbers. |
+| **Stream** | A recurring amount of money: how much and how often, as "amount every N weeks, months, or years." A positive amount comes in (a salary every two weeks, a bonus each quarter). A negative amount goes out (groceries, $100 every week). Streams are the only place I enter raw numbers. Tags will later mark a stream as income, an expense, an investment, and so on. |
 | **Splitter** | Divides what arrives and passes it on. It holds nothing and keeps nothing; money just moves through. All the logic lives here: percentages, fixed carve-outs, and any other rules I define. |
-| **Sink** | Receives money and stops it. Rent, groceries, a brokerage account. For now a sink is simple: it takes money in and reports how much reached it. |
 | **Connection** | Carries a rate. It's an ongoing "this much per month flows along here," not a transaction or a dated event. |
 
 ## What it should let me do in seconds
@@ -38,7 +37,7 @@ With a Sankey tool I'd say "$1,200 goes here." Here I say "a fifth of what arriv
 - See the actual shape of my money, not a summary of it.
 - Change one thing upstream and watch every downstream number move.
 - Answer *"If I raise my retirement contributions, what gets squeezed?"* by editing one splitter.
-- Answer *"Where does a raise actually land?"* by changing one source.
+- Answer *"Where does a raise actually land?"* by changing one income stream.
 - Notice flows I forgot I'd set up, because they're sitting right there on the canvas.
 - Spot money going somewhere I didn't intend, which a table of categories would never make obvious.
 
@@ -64,6 +63,6 @@ This list matters more than the feature list. Adding any of these would quietly 
 v1 is done when:
 
 1. I can rebuild my current spreadsheet on the canvas, end to end, and it reads more clearly than the spreadsheet does.
-2. I can change one source amount, and every affected number updates without me touching anything else.
+2. I can change one income stream's amount, and every affected number updates without me touching anything else.
 
 If that works, everything after it is refinement.

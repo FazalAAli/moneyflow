@@ -1,6 +1,87 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #141414;
+  color: #e6e6e6;
+}
+
 html,
 body,
 #root {
   height: 100%;
   margin: 0;
+}
+
+.node {
+  min-width: 160px;
+  padding: 10px 14px;
+  border: 1px solid #3a3a3a;
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: #1f1f1f;
+}
+
+.node-income {
+  --accent: #4ade80;
+}
+
+.node-expense {
+  --accent: #f87171;
+}
+
+.node-pass {
+  --accent: #60a5fa;
+}
+
+.node-label {
+  font-weight: 600;
+}
+
+.node-inputs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #999;
+}
+
+.node-inputs input,
+.node-inputs select {
+  width: 70px;
+  padding: 2px 4px;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  background: #141414;
+  color: inherit;
+  font: inherit;
+}
+
+.node-inputs .node-every {
+  width: 36px;
+}
+
+.node-inputs select {
+  width: auto;
+}
+
+.node-detail {
+  font-size: 12px;
+  color: #999;
+}
+
+.node-flow {
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.node-short {
+  font-size: 12px;
+  color: #f87171;
+}
+
+.node .react-flow__handle {
+  background: var(--accent);
+  border: none;
 }
