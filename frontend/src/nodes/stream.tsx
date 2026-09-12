@@ -1,12 +1,15 @@
 import { Handle, Position, useReactFlow, type Node, type NodeProps } from '@xyflow/react'
 import { use, useRef } from 'react'
 import { ExpressionInput } from '../expr'
-import { FlowsContext, SYSTEM_VARS, VarsContext, money, type Rate, type Unit } from '../flow'
+import { FlowsContext, SYSTEM_VARS, VarsContext, rate, type Rate, type Unit } from '../flow'
 
-export type StreamNode = Node<{ label: string } & Rate, 'stream'>
+export type StreamNode = Node<
+  { label: string; collate?: boolean; collapsed?: boolean } & Rate,
+  'stream'
+>
 
 export function StreamNodeView({ id, data }: NodeProps<StreamNode>) {
-  const { updateNodeData, deleteElements } = useReactFlow<StreamNode>()
+  const { updateNodeData, deleteElements, getEdges } = useReactFlow<StreamNode>()
   const dialog = useRef<HTMLDialogElement>(null)
   const vars = use(VarsContext)
   const f = use(FlowsContext).nodes.get(id)
@@ -35,15 +38,30 @@ export function StreamNodeView({ id, data }: NodeProps<StreamNode>) {
       <div className={data.label ? 'node-label' : 'node-label empty'}>
         {data.label || 'Untitled'}
       </div>
-      <div className="node-detail">
-        {data.amount || 'auto'} every {data.every} {data.unit}
-        {data.every === 1 ? '' : 's'}
+      <div className="node-detail node-rate" title={data.amount}>
+        {data.collate ? (
+          <button
+            className="node-toggle nodrag"
+            onClick={(e) => {
+              e.stopPropagation()
+              updateNodeData(id, { collapsed: !data.collapsed })
+            }}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
+            {data.collapsed ? '▸' : '▾'} {getEdges().filter((e) => e.source === id).length} streams
+          </button>
+        ) : (
+          <>
+            {data.amount || 'auto'} every {data.every} {data.unit}
+            {data.every === 1 ? '' : 's'}
+          </>
+        )}
       </div>
-      <div className="node-flow">{money(f.flow)}/month</div>
-      {f.short > 0 && <div className="node-short">{money(f.short)}/month short</div>}
+      <div className="node-flow">{rate(f.flow)}</div>
+      {f.short > 0 && <div className="node-short">{rate(f.short)} short</div>}
       {f.hasOut && (
         <div className="node-detail">
-          {money(f.out)}/month out · {money(f.unallocated)}/month excess
+          {rate(f.out)} out · {rate(f.unallocated)} excess
         </div>
       )}
       <Handle type="source" position={Position.Right} />
@@ -72,35 +90,47 @@ export function StreamNodeView({ id, data }: NodeProps<StreamNode>) {
                 onChange={(e) => updateNodeData(id, { label: e.target.value })}
               />
             </label>
-            <label className="field">
-              <span>Amount</span>
-              <ExpressionInput
-                value={data.amount}
-                onChange={(amount) => updateNodeData(id, { amount })}
+            <label className="field field-check">
+              <input
+                type="checkbox"
+                checked={!!data.collate}
+                onChange={(e) => updateNodeData(id, { collate: e.target.checked })}
               />
-              <small className="field-hint">
-                A number or expression. Drag a variable in from the left.
-              </small>
+              <span>Group — adds up whatever feeds off it</span>
             </label>
-            <div className="field">
-              <span>Every</span>
-              <div className="field-row">
-                <input
-                  type="number"
-                  min="1"
-                  value={data.every || ''}
-                  onChange={(e) => updateNodeData(id, { every: Number(e.target.value) })}
-                />
-                <select
-                  value={data.unit}
-                  onChange={(e) => updateNodeData(id, { unit: e.target.value as Unit })}
-                >
-                  <option value="week">week</option>
-                  <option value="month">month</option>
-                  <option value="year">year</option>
-                </select>
-              </div>
-            </div>
+            {!data.collate && (
+              <>
+                <label className="field">
+                  <span>Amount</span>
+                  <ExpressionInput
+                    value={data.amount}
+                    onChange={(amount) => updateNodeData(id, { amount })}
+                  />
+                  <small className="field-hint">
+                    A number or expression. Drag a variable in from the left.
+                  </small>
+                </label>
+                <div className="field">
+                  <span>Every</span>
+                  <div className="field-row">
+                    <input
+                      type="number"
+                      min="1"
+                      value={data.every || ''}
+                      onChange={(e) => updateNodeData(id, { every: Number(e.target.value) })}
+                    />
+                    <select
+                      value={data.unit}
+                      onChange={(e) => updateNodeData(id, { unit: e.target.value as Unit })}
+                    >
+                      <option value="week">week</option>
+                      <option value="month">month</option>
+                      <option value="year">year</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
         <div className="modal-actions">

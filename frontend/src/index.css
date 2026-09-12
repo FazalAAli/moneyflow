@@ -47,6 +47,30 @@ body,
   color: #999;
 }
 
+.node-toggle {
+  padding: 2px 8px 2px 4px;
+  border: 1px solid #3a3a3a;
+  border-radius: 999px;
+  background: #2a2a2a;
+  color: #bbb;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.node-toggle:hover {
+  border-color: #666;
+  color: #e6e6e6;
+}
+
+/* Expressions get long; keep the node from stretching across the canvas. */
+.node-rate {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .node-flow {
   margin-top: 6px;
   font-variant-numeric: tabular-nums;
@@ -136,6 +160,17 @@ body,
 .field-row {
   display: flex;
   gap: 8px;
+}
+
+.modal .field-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal .field-check input {
+  width: auto;
+  margin: 0;
 }
 
 /* ponytail: .modal-prefixed so these beat the generic .modal input/select rules below */

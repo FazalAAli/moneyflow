@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Personal financial model, never committed
+src/model.local.ts
+tests/sheet.check.ts
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

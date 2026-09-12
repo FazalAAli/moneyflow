@@ -46,7 +46,16 @@ export function toMonthly({ amount, every, unit }: Rate, vars: Vars = {}): numbe
 
 export const money = (n: number) => Math.round(n).toLocaleString()
 
-type Item = { id: string; data: Rate }
+// ponytail: display only. The engine stays monthly; this restates it in the sheet's cadence.
+// Swap to a per-node cadence if streams ever need to read out in different units.
+export const PAYCHECKS_PER_YEAR = 26
+export const rate = (monthly: number) =>
+  `${money((monthly * 12) / PAYCHECKS_PER_YEAR)}/paycheck`
+
+// collate marks a group: it takes exactly what its children demand and never competes for
+// leftovers. Empty-with-children cannot mean this by itself, because a conduit like net pay
+// is also empty with children and must keep passing leftovers down to the catch-all below it.
+type Item = { id: string; data: Rate & { collate?: boolean } }
 type Link = { id: string; source: string; target: string }
 
 export type NodeFlow = {
@@ -73,10 +82,19 @@ const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0)
 export function computeFlows(items: Item[], links: Link[], vars: Vars = {}): Flows {
   // A node using $pool or $auto can't be resolved until its parent shares out; until then
   // it behaves like an empty node, and its parent fills the edge in during allocate.
+  const collated = new Set(items.filter((n) => n.data.collate).map((n) => n.id))
   const derived = new Map(
-    items.filter((n) => usesFlowVars(n.data.amount)).map((n) => [n.id, n.data]),
+    items
+      .filter((n) => !n.data.collate && usesFlowVars(n.data.amount))
+      .map((n) => [n.id, n.data]),
   )
-  const set = new Map(items.map((n) => [n.id, derived.has(n.id) ? null : toMonthly(n.data, vars)]))
+  // A group ignores any amount left on it; its size is whatever its children add up to.
+  const set = new Map(
+    items.map((n) => [
+      n.id,
+      derived.has(n.id) || n.data.collate ? null : toMonthly(n.data, vars),
+    ]),
+  )
   const outs = new Map(items.map((n) => [n.id, [] as Link[]]))
   const ins = new Map(items.map((n) => [n.id, [] as Link[]]))
   for (const l of links) {
@@ -93,7 +111,8 @@ export function computeFlows(items: Item[], links: Link[], vars: Vars = {}): Flo
   }
   // ponytail: a node with several parents asks each for an equal share.
   const linkFloor = (l: Link) => floor(l.target) / ins.get(l.target)!.length
-  const isEmpty = (id: string) => set.get(id) == null && !derived.has(id)
+  const isEmpty = (id: string) =>
+    set.get(id) == null && !derived.has(id) && !collated.has(id)
 
   const available = new Map<string, number>()
   const edges = new Map<string, number>()
