@@ -9,7 +9,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useMemo, useState } from 'react'
-import { FlowsContext, computeFlows, money, wouldCycle, type Vars } from './flow'
+import { FlowsContext, VarsContext, computeFlows, money, wouldCycle, type Vars } from './flow'
 import { nodeTypes, type AppNode } from './nodes'
 import { VarsTable } from './vars'
 
@@ -37,16 +37,13 @@ const initialNodes: AppNode[] = [
 function AddStream() {
   const { addNodes, screenToFlowPosition } = useReactFlow<AppNode>()
 
-  function add() {
-    const label = prompt('Name')
-    if (!label) return
+  const add = () =>
     addNodes({
       id: crypto.randomUUID(),
       type: 'stream',
       position: screenToFlowPosition({ x: innerWidth / 2, y: innerHeight / 2 }),
-      data: { label, amount: '', every: 1, unit: 'month' },
+      data: { label: '', amount: '', every: 1, unit: 'month' },
     })
-  }
 
   return <button onClick={add}>+ Stream</button>
 }
@@ -63,22 +60,24 @@ export default function App() {
 
   return (
     <FlowsContext value={flows}>
-      <ReactFlow
-        nodes={nodes}
-        edges={labelled}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={(c) => setEdges((es) => addEdge(c, es))}
-        isValidConnection={(c) => !wouldCycle(edges, c.source, c.target)}
-        nodeTypes={nodeTypes}
-        colorMode="dark"
-        fitView
-      >
-        <Panel position="top-left">
-          <AddStream />
-          <VarsTable vars={vars} onSave={setVars} />
-        </Panel>
-      </ReactFlow>
+      <VarsContext value={vars}>
+        <ReactFlow
+          nodes={nodes}
+          edges={labelled}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={(c) => setEdges((es) => addEdge(c, es))}
+          isValidConnection={(c) => !wouldCycle(edges, c.source, c.target)}
+          nodeTypes={nodeTypes}
+          colorMode="dark"
+          fitView
+        >
+          <Panel position="top-left">
+            <AddStream />
+            <VarsTable vars={vars} onSave={setVars} />
+          </Panel>
+        </ReactFlow>
+      </VarsContext>
     </FlowsContext>
   )
 }

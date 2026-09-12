@@ -23,22 +23,37 @@ export function VarsTable({ vars, onSave }: { vars: Vars; onSave: (v: Vars) => v
   return (
     <>
       <button onClick={open}>Variables</button>
-      <dialog ref={dialog} className="vars">
-        <div className="vars-hint">Use one in any amount as $name.</div>
-        {rows.map(([name, value], i) => (
-          <div key={i} className="vars-row">
-            <input
-              placeholder="name"
-              value={name}
-              onChange={(e) => edit(i, [e.target.value, value])}
-            />
-            <input type="number" value={value} onChange={(e) => edit(i, [name, e.target.value])} />
-            <button onClick={() => setRows(rows.filter((_, j) => j !== i))}>✕</button>
+      <dialog ref={dialog} className="modal">
+        <h2 className="modal-title">Variables</h2>
+        <div className="modal-body">
+          <div className="vars-hint">
+            Use one in any amount as <code>$name</code>.
           </div>
-        ))}
-        <div className="vars-row">
-          <button onClick={() => setRows([...rows, ['', '']])}>+ Variable</button>
-          <button onClick={save}>Save</button>
+          {rows.map(([name, value], i) => (
+            <div key={i} className="vars-row">
+              <input
+                placeholder="name"
+                value={name}
+                onChange={(e) => edit(i, [e.target.value, value])}
+              />
+              <input type="number" value={value} onChange={(e) => edit(i, [name, e.target.value])} />
+              <button
+                className="icon"
+                title="Remove"
+                onClick={() => setRows(rows.filter((_, j) => j !== i))}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button className="ghost" onClick={() => setRows([...rows, ['', '']])}>
+            + Variable
+          </button>
+        </div>
+        <div className="modal-actions">
+          <button className="primary" onClick={save}>
+            Save
+          </button>
         </div>
       </dialog>
     </>

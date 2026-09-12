@@ -62,6 +62,11 @@ export type Flows = { nodes: Map<string, NodeFlow>; edges: Map<string, number> }
 
 export const FlowsContext = createContext<Flows>({ nodes: new Map(), edges: new Map() })
 
+export const VarsContext = createContext<Vars>({})
+
+// The two the graph fills in per node, offered alongside the variables table.
+export const SYSTEM_VARS = ['$pool', '$auto']
+
 const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0)
 
 // Demands travel upstream, leftovers travel downstream. Assumes no cycles (wouldCycle guards that).
