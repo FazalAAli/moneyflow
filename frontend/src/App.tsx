@@ -8,9 +8,10 @@ import {
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FlowsContext, VarsContext, computeFlows, rate, wouldCycle, type Vars } from './flow'
 import { nodeTypes, type AppNode } from './nodes'
+import { clear, load, parse, save, serialize, type Saved } from './storage'
 import { VarsTable } from './vars'
 
 const initialVars: Vars = { tax_rate: 0.2 }
@@ -105,10 +106,60 @@ function AddStream() {
   return <button onClick={add}>+ Stream</button>
 }
 
+function GraphFile({
+  json,
+  onLoad,
+  onReset,
+}: {
+  json: string
+  onLoad: (s: Saved) => void
+  onReset: () => void
+}) {
+  const file = useRef<HTMLInputElement>(null)
+  const sure = (what: string) =>
+    confirm(`${what} the whole graph. Export first if you want to keep this one.`)
+
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }))
+    const a = Object.assign(document.createElement('a'), {
+      href: url,
+      download: `moneyflow-${new Date().toISOString().slice(0, 10)}.json`,
+    })
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const open = async (f: File) => {
+    const loaded = parse(await f.text())
+    if (loaded) onLoad(loaded)
+    else alert("That file isn't a Money Flow graph.")
+  }
+
+  return (
+    <>
+      <button onClick={download}>Export</button>
+      <button onClick={() => file.current?.click()}>Import</button>
+      <button onClick={() => sure('Reset replaces') && onReset()}>Reset</button>
+      <input
+        ref={file}
+        type="file"
+        accept="application/json"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f && sure('Importing replaces')) open(f)
+          e.target.value = ''
+        }}
+      />
+    </>
+  )
+}
+
 export default function App() {
-  const [nodes, , onNodesChange] = useNodesState(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges)
-  const [vars, setVars] = useState<Vars>(initialVars)
+  const saved = useMemo(() => load(), [])
+  const [nodes, setNodes, onNodesChange] = useNodesState(saved?.nodes ?? initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(saved?.edges ?? initialEdges)
+  const [vars, setVars] = useState<Vars>(saved?.vars ?? initialVars)
   const flows = useMemo(() => computeFlows(nodes, edges, vars), [nodes, edges, vars])
   const hidden = useMemo(() => hiddenIds(nodes, edges), [nodes, edges])
   const shown = useMemo(
@@ -124,6 +175,24 @@ export default function App() {
       })),
     [edges, flows, hidden],
   )
+
+  // Dragging a node fires a change per frame, so wait for a pause before writing.
+  const json = serialize(nodes, edges, vars)
+  useEffect(() => {
+    const t = setTimeout(() => save(json), 500)
+    return () => clearTimeout(t)
+  }, [json])
+
+  const replace = (s: { nodes: AppNode[]; edges: Edge[]; vars: Vars }) => {
+    setNodes(s.nodes)
+    setEdges(s.edges)
+    setVars(s.vars)
+  }
+
+  const reset = () => {
+    clear()
+    replace({ nodes: initialNodes, edges: initialEdges, vars: initialVars })
+  }
 
   return (
     <FlowsContext value={flows}>
@@ -142,6 +211,7 @@ export default function App() {
           <Panel position="top-left">
             <AddStream />
             <VarsTable vars={vars} onSave={setVars} />
+            <GraphFile json={json} onLoad={replace} onReset={reset} />
           </Panel>
         </ReactFlow>
       </VarsContext>
